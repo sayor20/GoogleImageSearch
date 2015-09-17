@@ -1,38 +1,60 @@
-package com.sayor.org.googleimagesearcher;
+package com.sayor.org.googleimagesearcher.activities;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.support.v7.app.ActionBarActivity;
-import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
 import android.widget.EditText;
 import android.widget.GridView;
 import android.widget.Toast;
 
 import com.loopj.android.http.AsyncHttpClient;
 import com.loopj.android.http.JsonHttpResponseHandler;
+import com.sayor.org.googleimagesearcher.R;
+import com.sayor.org.googleimagesearcher.adapters.ImageResultsAdapter;
+import com.sayor.org.googleimagesearcher.models.ImageResult;
 
 import org.apache.http.Header;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.util.ArrayList;
+
 
 public class SearchActivity extends ActionBarActivity {
     private EditText etQuery;
     private GridView gvResults;
+    private ArrayList<ImageResult> imageResults;
+    private ArrayAdapter<ImageResult> aimageResults;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_search);
         setupViews();
+        imageResults = new ArrayList<ImageResult>();
+        aimageResults = new ImageResultsAdapter(this, imageResults);
+        gvResults.setAdapter(aimageResults);
+
     }
 
     private void setupViews(){
         etQuery = (EditText) findViewById(R.id.etQuery);
         gvResults = (GridView) findViewById(R.id.gvResults);
+        gvResults.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                Intent i = new Intent(SearchActivity.this, ImageResultsActivity.class );
+                ImageResult ImageInfo = imageResults.get(position);
+                i.putExtra("url", ImageInfo.fullURL);
+                startActivity(i);
+            }
+        });
     }
 
     @Override
@@ -51,38 +73,25 @@ public class SearchActivity extends ActionBarActivity {
         client.get(searchurl, null, new JsonHttpResponseHandler(){
             @Override
             public void onSuccess(int statusCode, Header[] headers, JSONObject response) {
+                JSONArray imageJSON = null;
+                try {
+                    imageJSON = response.getJSONObject("responseData").getJSONArray("results");
+                    imageResults.clear(); //clearing the arraylist images only for new search
+                    //when updating the array adapter, it updates the underlying data in it.
+                    aimageResults.addAll(ImageResult.fromJSONArray(imageJSON));
+                } catch (JSONException e) {
+                        e.printStackTrace();
+                }
+            }
+
+            @Override
+            public void onSuccess(JSONArray response) {
                 Toast.makeText(getApplicationContext(), "success", Toast.LENGTH_SHORT).show();
-                Log.d("msg", response.toString());
             }
 
             @Override
-            public void onSuccess(int statusCode, Header[] headers, String responseString) {
+            public void onFailure(Throwable e, JSONObject errorResponse) {
                 Toast.makeText(getApplicationContext(), "success", Toast.LENGTH_SHORT).show();
-                Log.d("msg", responseString.toString());
-            }
-
-            @Override
-            public void onSuccess(int statusCode, Header[] headers, JSONArray response) {
-                Toast.makeText(getApplicationContext(), "success", Toast.LENGTH_SHORT).show();
-                Log.d("msg", response.toString());
-            }
-
-            @Override
-            public void onFailure(int statusCode, Header[] headers, String responseString, Throwable throwable) {
-                Toast.makeText(getApplicationContext(), "failure", Toast.LENGTH_SHORT).show();
-                Log.d("msg", responseString.toString());
-            }
-
-            @Override
-            public void onFailure(int statusCode, Header[] headers, Throwable throwable, JSONObject errorResponse) {
-                Toast.makeText(getApplicationContext(), "failure", Toast.LENGTH_SHORT).show();
-                Log.d("msg", errorResponse.toString());
-            }
-
-            @Override
-            public void onFailure(int statusCode, Header[] headers, Throwable throwable, JSONArray errorResponse) {
-                Toast.makeText(getApplicationContext(), "failure", Toast.LENGTH_SHORT).show();
-                Log.d("msg", errorResponse.toString());
             }
         });
 
